@@ -416,12 +416,17 @@ public sealed class ZadaniaLinq
     /// </summary>
     public IEnumerable<string> Wyzwanie03_ProwadzacyISredniaOcenNaIchPrzedmiotach()
     {
-        return DaneUczelni.Studenci
-            .Join(DaneUczelni.Zapisy, s => s.Id, z => z.StudentId, (s, z) => new { s.Miasto, z.CzyAktywny })
-            .Where(x => x.CzyAktywny)
-            .GroupBy(x => x.Miasto)
-            .OrderByDescending(g => g.Count())
-            .Select(g => $"{g.Key}: {g.Count()}");
+        var query = 
+            from pr in DaneUczelni.Prowadzacy
+            join p in DaneUczelni.Przedmioty on pr.Id equals p.ProwadzacyId into przedmiotyProwadzacego
+            from p in przedmiotyProwadzacego.DefaultIfEmpty() 
+            join z in DaneUczelni.Zapisy on p?.Id equals z.PrzedmiotId into zapisyPrzedmiotu
+            from z in zapisyPrzedmiotu.DefaultIfEmpty()       
+            where z != null && z.OcenaKoncowa != null
+            group z by new { pr.Imie, pr.Nazwisko } into g
+            select $"{g.Key.Imie} {g.Key.Nazwisko}: {g.Average(x => x.OcenaKoncowa):F2}";
+
+        return query;
     }
 
     /// <summary>
@@ -439,17 +444,12 @@ public sealed class ZadaniaLinq
     /// </summary>
     public IEnumerable<string> Wyzwanie04_MiastaILiczbaAktywnychZapisow()
     {
-        var query = 
-            from pr in DaneUczelni.Prowadzacy
-            join p in DaneUczelni.Przedmioty on pr.Id equals p.ProwadzacyId into przedmiotyProwadzacego
-            from p in przedmiotyProwadzacego.DefaultIfEmpty() 
-            join z in DaneUczelni.Zapisy on p?.Id equals z.PrzedmiotId into zapisyPrzedmiotu
-            from z in zapisyPrzedmiotu.DefaultIfEmpty()       
-            where z != null && z.OcenaKoncowa != null
-            group z by new { pr.Imie, pr.Nazwisko } into g
-            select $"{g.Key.Imie} {g.Key.Nazwisko}: {g.Average(x => x.OcenaKoncowa):F2}";
-
-        return query;
+        return DaneUczelni.Studenci
+            .Join(DaneUczelni.Zapisy, s => s.Id, z => z.StudentId, (s, z) => new { s.Miasto, z.CzyAktywny })
+            .Where(x => x.CzyAktywny)
+            .GroupBy(x => x.Miasto)
+            .OrderByDescending(g => g.Count())
+            .Select(g => $"{g.Key}: {g.Count()}");
     }
 
     private static NotImplementedException Niezaimplementowano(string nazwaMetody)
